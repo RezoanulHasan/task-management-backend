@@ -4,6 +4,7 @@ import { RequestHandler } from 'express';
 import catchAsync from '../../../utils/catchAsync';
 import { TaskModel } from './taskModel';
 import { paginationHelpers } from '../../../helper/paginationHelpers';
+import { Query } from 'mongoose';
 
 export const createTask: RequestHandler = catchAsync(
   async (req, res): Promise<void> => {
@@ -22,6 +23,57 @@ export const createTask: RequestHandler = catchAsync(
 );
 
 export const getAllTasks: RequestHandler = catchAsync(
+  async (req, res): Promise<void> => {
+    const { page, limit, sortBy, sortOrder, searchTerm } = req.query;
+
+    // Using the helper function for pagination
+    const paginationOptions = paginationHelpers.calculatePagination({
+      page: page ? parseInt(page as string) : undefined,
+      limit: limit ? parseInt(limit as string) : undefined,
+      sortBy: sortBy ? (sortBy as string) : 'createdAt', // Default to createdAt
+      sortOrder: sortOrder ? (sortOrder as string) : undefined,
+    });
+
+    // Search filter by title
+    const searchFilter = searchTerm
+      ? { title: { $regex: searchTerm, $options: 'i' } }
+      : {};
+
+    // Fetch tasks with search and pagination
+    const tasksQuery: Query<any[], any> = TaskModel.find(searchFilter)
+      .sort({
+        [paginationOptions.sortBy as string]: paginationOptions.sortOrder,
+      })
+      .skip((paginationOptions.page - 1) * paginationOptions.limit)
+      .limit(paginationOptions.limit);
+
+    const tasks = await tasksQuery.exec();
+
+    const totalTasksCount = await TaskModel.countDocuments(searchFilter);
+
+    if (tasks.length > 0) {
+      res.status(200).json({
+        statusCode: 200,
+        success: true,
+        message: 'Successfully retrieved tasks with pagination and search',
+        meta: {
+          page: paginationOptions.page,
+          limit: paginationOptions.limit,
+          total: totalTasksCount,
+        },
+        tasks,
+      });
+    } else {
+      res.status(404).json({
+        statusCode: 404,
+        success: false,
+        message: 'No tasks information found',
+      });
+    }
+  },
+);
+
+export const getAllTaskss: RequestHandler = catchAsync(
   async (req, res): Promise<void> => {
     const { page, limit, sortBy, sortOrder, searchTerm } = req.query;
 

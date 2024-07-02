@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export type IOptions = {
   page?: number;
   limit?: number;
@@ -10,7 +11,7 @@ export type IOptionsResult = {
   limit: number;
   skip: number;
   sortBy: string;
-  sortOrder: string;
+  sortOrder: any;
 };
 
 const calculatePagination = (options: IOptions): IOptionsResult => {
