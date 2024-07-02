@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-undef */
 import { RequestHandler } from 'express';
 import catchAsync from '../../../utils/catchAsync';
@@ -24,7 +25,7 @@ export const getAllTasks: RequestHandler = catchAsync(
   async (req, res): Promise<void> => {
     const { page, limit, sortBy, sortOrder, searchTerm } = req.query;
 
-    // Calculate pagination options using the helper function
+    //  using the helper function for pagination
     const paginationOptions = paginationHelpers.calculatePagination({
       page: page ? parseInt(page as string) : undefined,
       limit: limit ? parseInt(limit as string) : undefined,
@@ -32,15 +33,22 @@ export const getAllTasks: RequestHandler = catchAsync(
       sortOrder: sortOrder ? (sortOrder as string) : undefined,
     });
 
-    // search by filter
+    // Search filter by title
     const searchFilter = searchTerm
       ? { title: { $regex: searchTerm, $options: 'i' } }
       : {};
 
-    // Fetch tasks with search, sorting, and pagination
-    const tasks = await TaskModel.find(searchFilter)
+    // Fetch tasks with search and pagination
+    let tasks = await TaskModel.find(searchFilter)
       .skip((paginationOptions.page - 1) * paginationOptions.limit)
       .limit(paginationOptions.limit);
+
+    //  matching searchTerm
+    if (searchTerm) {
+      tasks = tasks.filter((task) =>
+        task.title.match(new RegExp(searchTerm as any, 'i')),
+      );
+    }
 
     const totalTasksCount = await TaskModel.countDocuments(searchFilter);
 
@@ -48,7 +56,7 @@ export const getAllTasks: RequestHandler = catchAsync(
       res.status(200).json({
         statusCode: 200,
         success: true,
-        message: 'Successfully retrieved tasks with pagination',
+        message: 'Successfully retrieved tasks with pagination and search',
         meta: {
           page: paginationOptions.page,
           limit: paginationOptions.limit,
